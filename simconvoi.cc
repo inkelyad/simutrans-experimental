@@ -135,7 +135,6 @@ void convoi_t::reset()
 	sp_soll = 0;
 
 	heaviest_vehicle = 0;
-	longest_loading_time = 0;
 	last_departure_time = welt->get_zeit_ms();
 	for(uint8 i = 0; i < MAX_CONVOI_COST; i ++)
 	{	
@@ -204,6 +203,11 @@ convoi_t::convoi_t(karte_t* wl, loadsave_t* file) : fahr(max_vehicle, NULL)
 	old_fpl = NULL;
 	recalc_catg_index();
 	has_obsolete = calc_obsolescence(welt->get_timeline_year_month());
+	// Added by: Inkelyad
+	platform.loading_speed.resize(warenbauer_t::get_max_catg_index());
+	for (unsigned i = 0 ; i < warenbauer_t::get_max_catg_index(); i++){
+		platform.loading_speed[i]=0.0;
+	};
 }
 
 convoi_t::convoi_t(spieler_t* sp) : fahr(max_vehicle, NULL)
@@ -218,6 +222,12 @@ convoi_t::convoi_t(spieler_t* sp) : fahr(max_vehicle, NULL)
 
 	// Added by : Knightly
 	old_fpl = NULL;
+	// Added by : Inkelyad
+	platform.loading_speed.resize(warenbauer_t::get_max_catg_index());
+	for (unsigned i = 0 ; i < warenbauer_t::get_max_catg_index(); i++){
+		platform.loading_speed[i]=0.0;
+	};
+
 }
 
 
@@ -609,8 +619,8 @@ bool convoi_t::sync_step(long delta_t)
 	else {
 		return true;
 	}
-	if (loading_at_halt.is_bound() && state != LOADING ) {
-		loading_at_halt = halthandle_t();
+	if (platform.halt.is_bound() && state != LOADING ) {
+		platform.halt = halthandle_t();
 	}
 
 	switch(state) {
@@ -1631,7 +1641,6 @@ DBG_MESSAGE("convoi_t::add_vehikel()","extend array_tpl to %i totals.",max_rail_
 	set_erstes_letztes();
 
 	heaviest_vehicle = calc_heaviest_vehicle();
-	longest_loading_time = calc_longest_loading_time();
 
 DBG_MESSAGE("convoi_t::add_vehikel()","now %i of %i total vehikels.",anz_vehikel,max_vehicle);
 	return true;
@@ -1726,7 +1735,6 @@ DBG_MESSAGE("convoi_t::upgrade_vehicle()","at pos %i of %i totals.",i,max_vehicl
 	set_erstes_letztes();
 
 	heaviest_vehicle = calc_heaviest_vehicle();
-	longest_loading_time = calc_longest_loading_time();
 	
 	delete old_vehicle;
 
@@ -1793,7 +1801,6 @@ vehikel_t *convoi_t::remove_vehikel_bei(uint16 i)
 	}
 
 	heaviest_vehicle = calc_heaviest_vehicle();
-	longest_loading_time = calc_longest_loading_time();
 
 	return v;
 }
@@ -2908,7 +2915,6 @@ convoi_t::rdwr(loadsave_t *file)
 	// Must *always* go after standard parameters.
 
 	heaviest_vehicle = calc_heaviest_vehicle();
-	longest_loading_time = calc_longest_loading_time();
 
 	if(file->get_experimental_version() >= 1)
 	{
@@ -3266,8 +3272,14 @@ void convoi_t::laden() //"load" (Babelfish)
 		const spieler_t* owner = halt->get_besitzer(); //"get owner" (Google)
 		if(  owner == get_besitzer()  ||  owner == welt->get_spieler(1)  ) 
 		{
+			if (!platform.halt.is_bound()) {
+				update_platform(halt);
+			}
 			// loading/unloading ...
-			hat_gehalten(k, halt);
+			hat_gehalten(k, halt); // it will update platform.longest_loading_time
+			if (platform.longest_loading_time == 0 ) { // if there was nothing to load/unload
+				platform.longest_loading_time = 1000;
+			}
 		}
 	}
 
@@ -3281,7 +3293,7 @@ void convoi_t::laden() //"load" (Babelfish)
 	{
 
 		// This is the minimum time it takes for loading
-		wait_lock = longest_loading_time;
+		wait_lock = platform.longest_loading_time;
 
 		if(withdraw  &&  (loading_level==0  ||  goods_catg_index.empty())) {
 			// destroy when empty
@@ -3301,7 +3313,7 @@ void convoi_t::laden() //"load" (Babelfish)
 
 	else {
 		// just wait a little longer to get maximum load ...
-		wait_lock = (longest_loading_time*2)+(self.get_id())%1024;
+		wait_lock = platform.longest_loading_time+(self.get_id())%1024;
 	}
 }
 
@@ -3657,6 +3669,159 @@ uint16 convoi_t::calc_adjusted_speed_bonus(uint16 base_bonus, uint32 distance, k
 }
 
 /**
+ * update platform cache structure
+ * @author Inkelyad
+ */
+void convoi_t::update_platform(halthandle_t halt)
+{
+	platform.halt = halt;
+	platform.longest_loading_time = 0;
+	platform.length = 0;
+
+
+	grund_t *gr = welt->lookup(fahr[0]->get_pos());
+		
+	if(gr->ist_wasser()) {
+		update_platform_harbour(halt);
+	}
+	else
+	{
+		update_platform_ground(halt);
+	}
+}
+
+void convoi_t::update_platform_harbour(halthandle_t halt)
+{
+	array_tpl<float>effective_length(warenbauer_t::get_max_catg_index(),0.0F);
+	array_tpl<int>counter(warenbauer_t::get_max_catg_index(),0);
+	bool use_enables = welt->get_einstellungen()->get_loading_speed_use_enables();
+
+    for (slist_tpl<haltestelle_t::tile_t>::const_iterator i = (halt->get_tiles()).begin(), end = (halt->get_tiles()).end(); i != end; ++i)
+	{
+		grund_t* gr = i->grund;
+		const gebaeude_t* gb = gr->find<gebaeude_t>();
+		const haus_besch_t *besch=gb?gb->get_tile()->get_besch():NULL;
+		if (besch && besch->get_utyp() == haus_besch_t::hafen ) {
+			if( (besch->get_enabled()&1) || !use_enables ) // Passengers
+			{
+				effective_length[0] += besch->get_level();
+				counter[0]++;
+			}
+			if( (besch->get_enabled()&2) || !use_enables) // Mail
+			{
+				effective_length[1] += besch->get_level();
+				counter[1]++;
+			}
+			if( (besch->get_enabled()&4) || !use_enables) // All other
+			{
+				// TODO Specialized tiles
+				for ( unsigned i = 2 ; i < warenbauer_t::get_max_catg_index(); i++ )
+				{
+					effective_length[i] += besch->get_level();
+					counter[i]++;
+				}
+			}
+		}
+	}
+
+	// Now fill up this->platform
+	for ( unsigned i = 0 ; i < warenbauer_t::get_max_catg_index(); i++ )
+	{
+		// if there was no tile for good type, we will load slowly
+		if ( effective_length[i] == 0.0F) {
+			effective_length[i] = 1.0F/16.0F;
+			counter[i] = 1;
+		}
+		// It give us nice 1.7 speed up for 2 equal platforms, 3.8 for 5, 5.7 for 8
+		platform.loading_speed[i] = effective_length[i]/(logf(counter[i])/5.0F + 1.0F);
+	}
+	platform.length = 24*16;
+
+}
+
+void convoi_t::update_platform_ground(halthandle_t halt)
+{
+	array_tpl<float>effective_length(warenbauer_t::get_max_catg_index(),0);
+	array_tpl<float>real_length(warenbauer_t::get_max_catg_index(),0);
+	array_tpl<float>convoy_length(warenbauer_t::get_max_catg_index(),0);
+	bool use_enables = welt->get_einstellungen()->get_loading_speed_use_enables();
+	int convoy_length_total = 0;
+	int platform_length_total = 0;
+
+	for(unsigned i=0; i < anz_vehikel ; i++) 
+	{
+		vehikel_t* v = fahr[i];
+		int v_length = v->get_besch()->get_length();
+		convoy_length_total += v_length;
+		convoy_length[v->get_fracht_typ()->get_catg_index()] += v_length;
+	}
+
+
+	koord zv = koord( ribi_t::rueckwaerts(fahr[0]->get_fahrtrichtung()) );
+	koord3d pos = fahr[0]->get_pos();
+	const grund_t *grund = welt->lookup(pos);
+
+	if(  grund->get_weg_yoff()==TILE_HEIGHT_STEP  ) 
+	{
+		// start on bridge?
+		pos.z += Z_TILE_STEP;
+	}
+	while(  grund  &&  grund->get_halt() == halt  && platform_length_total < convoy_length_total) {
+		const gebaeude_t* gb = grund->find<gebaeude_t>();
+		const haus_besch_t *besch=gb?gb->get_tile()->get_besch():NULL;
+		if (besch) {
+			if( (besch->get_enabled()&1) || !use_enables ) // Passengers
+			{
+				effective_length[0] += TILE_STEPS * besch->get_level();
+				real_length[0] += TILE_STEPS;
+			}
+			if( (besch->get_enabled()&2) || !use_enables ) // Mail
+			{
+				effective_length[1] += TILE_STEPS * besch->get_level();
+				real_length[1] += TILE_STEPS;
+			}
+			if( (besch->get_enabled()&4) || !use_enables) // All other
+			{
+				// TODO Specialized tiles
+				for ( unsigned i = 2 ; i < warenbauer_t::get_max_catg_index(); i++ )
+				{
+					effective_length[i] += TILE_STEPS * besch->get_level();
+					real_length[i] += TILE_STEPS;
+				}
+			}
+		}
+		platform_length_total += TILE_STEPS;
+		pos += zv;
+		grund = welt->lookup(pos);
+		if(  grund==NULL  ) 
+		{
+			grund = welt->lookup(pos-koord3d(0,0,Z_TILE_STEP));
+			if(  grund &&  grund->get_weg_yoff()!=TILE_HEIGHT_STEP  )
+			{
+				// not end/start of bridge
+				break;
+			}
+		}
+	}
+
+	// Now fill up this->platform
+	for ( unsigned i = 0 ; i < warenbauer_t::get_max_catg_index(); i++ )
+	{
+		// if there was no tile for good type, we will load slowly
+		if ( real_length[i] == 0.0f) {
+			effective_length[i] = 1.0f;
+			real_length[i] = TILE_STEPS;
+		}
+		platform.loading_speed[i] = effective_length[i]/real_length[i];
+		if ( real_length[i] < convoy_length[i] )
+		{
+			platform.loading_speed[i] *= (float)real_length[i]/(float)convoy_length[i];
+		}
+	}
+	platform.length = platform_length_total;
+}
+
+/**
  * convoi an haltestelle anhalten
  * "Convoi stop at stop" (Google translations)
  * @author Hj. Malthaner
@@ -3666,72 +3831,54 @@ uint16 convoi_t::calc_adjusted_speed_bonus(uint16 base_bonus, uint32 distance, k
 void convoi_t::hat_gehalten(koord k, halthandle_t halt) //"has held" (Google)
 {
 	sint64 gewinn = 0;
-	loading_at_halt = halt;
-	grund_t *gr = welt->lookup(fahr[0]->get_pos());
-
-	int station_length=0;
-	if(gr->ist_wasser()) {
-		// harbour has any size
-		station_length = 24*16;
-	}
-	else
-	{
-		// calculate real station length
-		koord zv = koord( ribi_t::rueckwaerts(fahr[0]->get_fahrtrichtung()) );
-		koord3d pos = fahr[0]->get_pos();
-		const grund_t *grund = welt->lookup(pos);
-		if(  grund->get_weg_yoff()==TILE_HEIGHT_STEP  ) 
-		{
-			// start on bridge?
-			pos.z += Z_TILE_STEP;
-		}
-		while(  grund  &&  grund->get_halt() == halt  ) {
-			station_length += TILE_STEPS;
-			pos += zv;
-			grund = welt->lookup(pos);
-			if(  grund==NULL  ) 
-			{
-				grund = welt->lookup(pos-koord3d(0,0,Z_TILE_STEP));
-				if(  grund &&  grund->get_weg_yoff()!=TILE_HEIGHT_STEP  )
-				{
-					// not end/start of bridge
-					break;
-				}
-			}
-		}
-	}
-
-	// only load vehicles in station
-
-	//int convoy_length = 0;
 	bool second_run = anz_vehikel <= 1;
 	uint8 convoy_length = 0;
 	bool changed_loading_level = false;
+	platform.longest_loading_time = 0;
 	for(sint8 i=0; i < anz_vehikel ; i++) 
 	{
 		vehikel_t* v = fahr[i];
-
+		float unloading_loading_time = 0.0;
 		convoy_length += v->get_besch()->get_length();
-		if(convoy_length > station_length) 
+		if(convoy_length > platform.length) 
 		{
 			break;
 		}
 
 		// we need not to call this on the same position		if(  v->last_stop_pos != v->get_pos().get_2d()  ) {		// calc_revenue
+		float unloaded=0.0f;
 		if(!second_run || anz_vehikel == 1)
 		{
 			//convoi_t *tmp = this;	
 			v->last_stop_pos = v->get_pos().get_2d();
 			//Unload
 			v->current_revenue = 0;
-			freight_info_resort |= v->entladen(k, halt);
+			unloaded = (float)( v->entladen(k, halt));
+			freight_info_resort |= (unloaded > 0.0); 
 			gewinn += v->current_revenue;
 		}
 
-		changed_loading_level |= v->entladen(k, halt);
+		unloaded += (float) (v->entladen(k, halt));
+		if (unloaded) 
+		{
+			float unloading_time = (float)(v->get_besch()->get_loading_time());
+			unloading_time /= platform.loading_speed[v->get_fracht_typ()->get_catg_index()];
+			unloading_time *= unloaded/(float)(v->get_besch()->get_zuladung()); // zuladung != 0 because unloaded != 0
+			unloading_loading_time +=  unloading_time;
+		}
+		changed_loading_level |= (unloaded > 0.0);
+
 		if(!no_load) {
 			// load
-			changed_loading_level |= v->beladen(k, halt, second_run);
+			float loaded = (float)(v->beladen(k, halt, second_run));
+			if (loaded) 
+			{
+				float loading_time = (float)(v->get_besch()->get_loading_time());
+				loading_time /= platform.loading_speed[v->get_fracht_typ()->get_catg_index()];
+				loading_time *= loaded/(float)(v->get_besch()->get_zuladung()); // zuladung != 0 because  loaded !=0
+				unloading_loading_time += loading_time;
+			}
+			changed_loading_level |= (loaded > 0.0);
 		}
 		else 
 		{
@@ -3749,6 +3896,7 @@ void convoi_t::hat_gehalten(koord k, halthandle_t halt) //"has held" (Google)
 			// Bernd Gabriel, 05.07.2009: must reinitialize convoy_length
 			convoy_length = 0;
 		}
+		platform.longest_loading_time = max( (uint16) unloading_loading_time, platform.longest_loading_time );
 	}
 	freight_info_resort |= changed_loading_level;
 	if(  changed_loading_level  ) {
@@ -4698,21 +4846,6 @@ convoi_t::calc_heaviest_vehicle()
 		}
 	}
 	return heaviest;
-}
-
-uint16
-convoi_t::calc_longest_loading_time()
-{
-	uint16 longest = 0;
-	for(uint8 i = 0; i < anz_vehikel; i ++)
-	{
-		uint16 tmp = fahr[i]->get_besch()->get_loading_time();
-		if(tmp > longest)
-		{
-			longest = tmp;
-		}
-	}
-	return longest;
 }
 
 // Bernd Gabriel, 18.06.2009: extracted from new_month()

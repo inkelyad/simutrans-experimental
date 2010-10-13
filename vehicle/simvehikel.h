@@ -195,16 +195,16 @@ private:
 	 * @return sum of unloaded goods
 	 * @author Hj. Malthaner
 	 */
-	uint16 unload_freight(halthandle_t halt);
+	int unload_freight(halthandle_t halt);
 
 	/**
 	 * Load freight from halt
-	 * @return loading successful?
+	 * @return sum of loaded goods
 	 * @author Hj. Malthaner
 	 */
-	bool load_freight(halthandle_t halt) { return load_freight(halt, false); }
+	int load_freight(halthandle_t halt) { return load_freight(halt, false); }
 
-	bool load_freight(halthandle_t halt, bool overcrowd);
+	int load_freight(halthandle_t halt, bool overcrowd);
 
 	// @author: jamespetts
 	// uint16 local_bonus_supplement; 
@@ -483,14 +483,14 @@ public:
 	* fahrzeug an haltestelle entladen
 	* @author Hj. Malthaner
 	*/
-	bool entladen(koord k, halthandle_t halt);
+	uint16 entladen(koord k, halthandle_t halt);
 
 	/**
 	* fahrzeug an haltestelle beladen
 	*/
-	bool beladen(koord k, halthandle_t halt) { return beladen(k, halt, false); }
+	uint16 beladen(koord k, halthandle_t halt) { return beladen(k, halt, false); }
 
-	bool beladen(koord k, halthandle_t halt, bool overcrowd);
+	uint16 beladen(koord k, halthandle_t halt, bool overcrowd);
 
 	// sets or querey begin and end of convois
 	void set_erstes(bool janein) {ist_erstes = janein;} //janein = "yesno" (Google)

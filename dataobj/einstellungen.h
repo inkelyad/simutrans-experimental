@@ -325,7 +325,11 @@ public:
 	// speedbonus.tab files from Simutrans-Standard
 	// @author: jamespetts
 	float speed_bonus_multiplier;
-	
+
+	// Use enables bits in loading speed calculation
+	// @author: Inkelyad
+	bool loading_speed_use_enables;
+
 private:
 
 	// true, if this pak should be used with extensions (default)
@@ -699,6 +703,7 @@ public:
 	// allowed modes are 0,1,2
 	enum { TO_PREVIOUS=0, TO_TRANSFER, TO_DESTINATION };
 
+	bool get_loading_speed_use_enables() const { return loading_speed_use_enables; }
 
 	bool is_avoid_overcrowding() const { return avoid_overcrowding; }
 

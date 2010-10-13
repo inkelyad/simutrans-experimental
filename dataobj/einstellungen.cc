@@ -367,6 +367,10 @@ einstellungen_t::einstellungen_t() :
 
 	speed_bonus_multiplier = 1.0F;
 
+	// Use enables bits in loading speed calculation
+	// @author: Inkelyad
+	loading_speed_use_enables = false;
+
 	allow_buying_obsolete_vehicles = true;
 
 	// default: load also private extensions of the pak file
@@ -1610,6 +1614,11 @@ void einstellungen_t::parse_simuconf( tabfile_t &simuconf, sint16 &disp_width, s
 	enforce_weight_limits = contents.get_int("enforce_weight_limits", enforce_weight_limits);
 
 	uint16 speed_bonus_multiplier_percent = 100;
+
+	// Use enables bits in loading speed calculation
+	// @author: Inkelyad
+	loading_speed_use_enables = contents.get_int("loading_speed_use_enables", loading_speed_use_enables); 
+
 	speed_bonus_multiplier_percent = contents.get_int("speed_bonus_multiplier_percent", speed_bonus_multiplier_percent);
 	speed_bonus_multiplier = (float)speed_bonus_multiplier_percent / 100.0F;
 

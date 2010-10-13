@@ -711,8 +711,7 @@ void vehikel_t::set_convoi(convoi_t *c)
  * @return sum of unloaded goods
  * @author Hj. Malthaner
  */
-uint16
-vehikel_t::unload_freight(halthandle_t halt)
+int vehikel_t::unload_freight(halthandle_t halt)
 {
 	assert(halt.is_bound());
 	uint16 sum_menge = 0;
@@ -848,13 +847,14 @@ vehikel_t::unload_freight(halthandle_t halt)
 
 /**
  * Load freight from halt
- * @return loading successful?
+ * @return sum of loaded goods
  * @author Hj. Malthaner
  */
-bool vehikel_t::load_freight(halthandle_t halt, bool overcrowd)
+int vehikel_t::load_freight(halthandle_t halt, bool overcrowd)
 {
 	const bool ok = halt->gibt_ab(besch->get_ware());
 	schedule_t *fpl = cnv->get_schedule();
+	int total_freight_before = total_freight;
 	if( ok ) 
 	{
 
@@ -873,7 +873,7 @@ bool vehikel_t::load_freight(halthandle_t halt, bool overcrowd)
 			if(ware.menge == 0) 
 			{
 				// now empty, but usually, we can get it here ...
-				return ok;
+				return 0;
 			}
 			slist_iterator_tpl<ware_t> iter (fracht);
 			uint16 count = 0;
@@ -909,7 +909,7 @@ bool vehikel_t::load_freight(halthandle_t halt, bool overcrowd)
 			INT_CHECK("simvehikel 876");
 		}
 	}
-	return ok;
+	return total_freight - total_freight_before;
 }
 
 
@@ -1738,16 +1738,16 @@ void vehikel_t::loesche_fracht()
 }
 
 
-bool vehikel_t::beladen(koord, halthandle_t halt, bool overcrowd)
+uint16 vehikel_t::beladen(koord, halthandle_t halt, bool overcrowd)
 {
-	bool ok = true;
+	int res = 0;
 	if(halt.is_bound()) 
 	{
-		ok = load_freight(halt, overcrowd);
+		res = load_freight(halt, overcrowd);
 	}
 	sum_weight = (get_fracht_gewicht()+499)/1000 + besch->get_gewicht();
 	calc_bild();
-	return ok;
+	return res;
 }
 
 
@@ -1756,7 +1756,7 @@ bool vehikel_t::beladen(koord, halthandle_t halt, bool overcrowd)
  * "Vehicle to stop discharged" (translated by Google)
  * @author Hj. Malthaner
  */
-bool vehikel_t::entladen(koord, halthandle_t halt)
+uint16 vehikel_t::entladen(koord, halthandle_t halt)
 {
 	// printf("Vehikel %p entladen\n", this);
 	uint16 menge = unload_freight(halt);
@@ -1766,9 +1766,8 @@ bool vehikel_t::entladen(koord, halthandle_t halt)
 		cnv->book(menge, CONVOI_TRANSPORTED_GOODS);
 		// add delivered goods to halt's statistics
 		halt->book(menge, HALT_ARRIVED);
-		return true;
 	}
-	return false;
+	return menge;
 }
 
 

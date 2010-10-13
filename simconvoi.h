@@ -16,6 +16,7 @@
 #include "vehicle/overtaker.h"
 #include "tpl/array_tpl.h"
 #include "tpl/fixed_list_tpl.h"
+#include "tpl/array_tpl.h"
 #include "tpl/minivec_tpl.h"
 
 #include "convoihandle_t.h"
@@ -413,7 +414,6 @@ private:
 	bool reversed;
 
 	uint32 heaviest_vehicle;
-	uint16 longest_loading_time;
 
 	// Time in ticks since it departed from the previous stop.
 	// Used for measuring average speed.
@@ -804,7 +804,17 @@ public:
 	* @author Hj. Malthaner
 	*/
 	void laden();
-	halthandle_t loading_at_halt; // local cache, will be used when state == LOADING, updated by hat_gehalten() and sync_step()
+
+	struct { //local cache, will be used when state == LOADING
+		halthandle_t halt; // if it is bound , plaform stucture is valid. updated by hat_gehalten() and sync_step()
+		array_tpl<float> loading_speed; // for each good type
+		uint16 longest_loading_time; //updated by hat_gehalten
+		unsigned length;
+	} platform;
+	void update_platform(halthandle_t halt);
+	void update_platform_harbour(halthandle_t halt);
+	void update_platform_ground(halthandle_t halt);
+
 
 	/**
 	* Setup vehicles before starting to move
@@ -980,10 +990,6 @@ public:
 	uint32 calc_heaviest_vehicle();
 	inline uint32 get_heaviest_vehicle() const { return heaviest_vehicle; }
 	
-	//@author: jamespetts
-	uint16 calc_longest_loading_time();
-	inline uint16 get_longest_loading_time() const { return longest_loading_time; }
-
 	// @author: jamespetts
 	// Returns the number of standing passengers (etc.) in this convoy.
 	uint16 get_overcrowded() const;
