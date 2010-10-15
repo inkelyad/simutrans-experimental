@@ -485,22 +485,22 @@ void vehicle_writer_t::write_obj(FILE* fp, obj_node_t& parent, tabfileobj_t& obj
 		default:	
 		case tram_wt:
 		case road_wt:
-			default_loading_time = 2000;
+			default_loading_time = 20 * payload;
 			break;
 
 		case monorail_wt:
 		case maglev_wt:
 		case narrowgauge_wt:
 		case track_wt:
-			default_loading_time = 4000;
+			default_loading_time = 40 * payload;
 			break;
 
 		case water_wt:
-			default_loading_time = 20000;
+			default_loading_time = 60 * payload;
 			break;
 
 		case air_wt:
-			default_loading_time = 30000;
+			default_loading_time = 100 * payload;
 			break;
 	}
 	uint16 loading_time = (obj.get_int("loading_time", default_loading_time));

@@ -351,22 +351,22 @@ vehicle_reader_t::read_node(FILE *fp, obj_node_info_t &node)
 		default:	
 		case tram_wt:
 		case road_wt:
-			besch->loading_time = 2000;
+			besch->loading_time = 20 * besch->zuladung;
 			break;
 
 		case monorail_wt:
 		case maglev_wt:
 		case narrowgauge_wt:
 		case track_wt:
-			besch->loading_time = 4000;
+			besch->loading_time = 40 * besch->zuladung;
 			break;
 
 		case water_wt:
-			besch->loading_time = 20000;
+			besch->loading_time = 60 * besch->zuladung;
 			break;
 
 		case air_wt:
-			besch->loading_time = 30000;
+			besch->loading_time = 100 * besch->zuladung;
 			break;
 		}
 		uint16 air_default;
