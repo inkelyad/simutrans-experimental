@@ -619,9 +619,6 @@ bool convoi_t::sync_step(long delta_t)
 	else {
 		return true;
 	}
-	if (platform.halt.is_bound() && state != LOADING ) {
-		platform.halt = halthandle_t();
-	}
 
 	switch(state) {
 		case INITIAL:
@@ -1069,6 +1066,9 @@ end_loop:
 		case ROUTING_1:
 			{
 				vehikel_t* v = fahr[0];
+				if (platform.halt.is_bound()) {
+					platform.halt = halthandle_t();
+				}
 
 				if (fpl->empty()) {
 					state = NO_ROUTE;

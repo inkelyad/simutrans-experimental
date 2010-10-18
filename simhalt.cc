@@ -2359,8 +2359,8 @@ ware_t haltestelle_t::hole_ab(const ware_besch_t *wtyp, uint32 maxi, const sched
 							{
 								if (last_loaded_convoy != cnv->self ) 
 								{ //Last time we were loading different convoy
-								   	if (last_loaded_convoy->platform.halt == self /*&& last_loaded_convoy->get_finance_history(0,CONVOI_AVERAGE_SPEED) >= cnv->get_finance_history(0,CONVOI_AVERAGE_SPEED)*/)
-									{ // and it is still here /*and is not slower*/
+								   	if (last_loaded_convoy->platform.halt == self)
+									{ // and it is still here
 										continue;
 									}
 									else
