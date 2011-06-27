@@ -158,5 +158,6 @@ void haus_besch_t::calc_checksum(checksum_t *chk) const
 	chk->input(station_maintenance);
 	chk->input(station_price);
 	chk->input(station_capacity);
+	chk->input(compatibility_group);
 
 }

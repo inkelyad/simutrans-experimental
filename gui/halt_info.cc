@@ -259,6 +259,15 @@ void halt_info_t::zeichnen(koord pos, koord gr)
 
 		top = pos.y+50;
 		info_buf.clear();
+		cbuffer_t compatibility_group_str;
+		compatibility_group_str.append("Station Group ");
+		compatibility_group_str.append(halt->get_compatibility_group());
+		info_buf.printf("%s\n", translator::translate(compatibility_group_str));
+		left = pos.x+10;
+		display_proportional(left, top, info_buf, ALIGN_LEFT, COL_BLACK, true);
+
+		top = pos.y+50 + LINESPACE;
+		info_buf.clear();
 		info_buf.printf("%s: %u", translator::translate("Storage capacity"), halt->get_capacity(0));
 		left = pos.x+10;
 		// passagiere
@@ -285,7 +294,7 @@ void halt_info_t::zeichnen(koord pos, koord gr)
 		// information about the convoi itself
 		info_buf.clear();
 		halt->info(info_buf);
-		display_multiline_text(pos.x+10, pos.y+53+LINESPACE, info_buf, COL_BLACK);
+		display_multiline_text(pos.x+10, pos.y+53+ 2 * LINESPACE, info_buf, COL_BLACK);
 	}
 }
 

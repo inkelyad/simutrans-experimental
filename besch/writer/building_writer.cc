@@ -99,7 +99,7 @@ void tile_writer_t::write_obj(FILE* fp, obj_node_t& parent, int index, int seaso
 void building_writer_t::write_obj(FILE* fp, obj_node_t& parent, tabfileobj_t& obj)
 {
 	// Hajo: take care, hardocded size of node on disc here!
-	obj_node_t node(this, 36, &parent);
+	obj_node_t node(this, 38, &parent);
 
 	write_head(fp, node, obj);
 
@@ -237,6 +237,7 @@ void building_writer_t::write_obj(FILE* fp, obj_node_t& parent, tabfileobj_t& ob
 	sint32 station_capacity = obj.get_int("station_capacity", level * 32);
 	sint32 station_maintenance = obj.get_int("station_maintenance", 2147483647); //NOTE: Default cannot be set because it depends on a world factor. Must detect this number and put in default if it is found.
 	sint32 station_price = obj.get_int("station_price", 2147483647);
+	uint16 compatibility_group = obj.get_int("compatibility_group", 0);
 
 	// Encode the depot traction types.
 	if(utype == haus_besch_t::depot)
@@ -362,7 +363,8 @@ void building_writer_t::write_obj(FILE* fp, obj_node_t& parent, tabfileobj_t& ob
 	// to the standard version number, to be subtracted again when read.
 	// Start at 0x100 and increment in hundreds (hex).
 	// 0x200 - Depot traction types.
-	version += 0x200;
+	// 0x300 - Compatibility group
+	version += 0x300;
 	
 	// Hajo: write version data
 
@@ -386,6 +388,7 @@ void building_writer_t::write_obj(FILE* fp, obj_node_t& parent, tabfileobj_t& ob
 	node.write_uint16(fp, station_capacity,		26);
 	node.write_sint32(fp, station_maintenance,	28);
 	node.write_sint32(fp, station_price,		32);
+	node.write_uint16(fp, compatibility_group,	36);
 
 	// probably add some icons, if defined
 	slist_tpl<string> cursorkeys;

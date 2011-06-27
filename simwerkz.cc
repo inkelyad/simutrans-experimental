@@ -173,10 +173,10 @@ char *tooltip_with_price_maintenance_level(karte_t *welt, const char *tip, sint6
  * extended to search first in our direction
  * @author Hj. Malthaner, V.Meyer, prissi
  */
-static halthandle_t suche_nahe_haltestelle(spieler_t *sp, karte_t *welt, koord3d pos, sint16 b=1, sint16 h=1)
+static halthandle_t suche_nahe_haltestelle(spieler_t *sp, karte_t *welt, koord3d pos, const haus_besch_t *besch, sint16 b=1, sint16 h=1)
 {
 	const planquadrat_t *plan = welt->lookup(pos.get_2d());
-	if(plan  &&  plan->get_halt().is_bound()) {
+	if(plan  &&  plan->get_halt().is_bound() && plan->get_halt()->same_group(besch)) {
 		return plan->get_halt();
 	}
 
@@ -211,7 +211,7 @@ static halthandle_t suche_nahe_haltestelle(spieler_t *sp, karte_t *welt, koord3d
 		const planquadrat_t *plan = welt->lookup(pos.get_2d()+next_try_dir[i]);
 		if(plan) {
 			halthandle_t halt = plan->get_halt();
-			if(halt.is_bound()  &&  sp==halt->get_besitzer()) {
+			if(halt.is_bound()  &&  sp==halt->get_besitzer() && halt->same_group(besch)) {
 				return halt;
 			}
 		}
@@ -222,14 +222,14 @@ static halthandle_t suche_nahe_haltestelle(spieler_t *sp, karte_t *welt, koord3d
 		const planquadrat_t *plan = welt->lookup( pos.get_2d()+koord(-1,y) );
 		if(plan) {
 			halthandle_t halt = plan->get_halt();
-			if(halt.is_bound()  &&  sp==halt->get_besitzer()) {
+			if(halt.is_bound()  &&  sp==halt->get_besitzer() && halt->same_group(besch)) {
 				return halt;
 			}
 		}
 		plan = welt->lookup( pos.get_2d()+koord(b,y) );
 		if(plan) {
 			halthandle_t halt = plan->get_halt();
-			if(halt.is_bound()  &&  sp==halt->get_besitzer()) {
+			if(halt.is_bound()  &&  sp==halt->get_besitzer() && halt->same_group(besch)) {
 				return halt;
 			}
 		}
@@ -238,14 +238,14 @@ static halthandle_t suche_nahe_haltestelle(spieler_t *sp, karte_t *welt, koord3d
 		const planquadrat_t *plan = welt->lookup( pos.get_2d()+koord(x,-1) );
 		if(plan) {
 			halthandle_t halt = plan->get_halt();
-			if(halt.is_bound()  &&  sp==halt->get_besitzer()) {
+			if(halt.is_bound()  &&  sp==halt->get_besitzer() && halt->same_group(besch)) {
 				return halt;
 			}
 		}
 		plan = welt->lookup( pos.get_2d()+koord(x,h) );
 		if(plan) {
 			halthandle_t halt = plan->get_halt();
-			if(halt.is_bound()  &&  sp==halt->get_besitzer()) {
+			if(halt.is_bound()  &&  sp==halt->get_besitzer() && halt->same_group(besch)) {
 				return halt;
 			}
 		}
@@ -257,7 +257,7 @@ static halthandle_t suche_nahe_haltestelle(spieler_t *sp, karte_t *welt, koord3d
 		const planquadrat_t *plan = welt->lookup(pos.get_2d()+koord::neighbours[i]);
 		if(plan) {
 			halthandle_t halt = plan->get_halt();
-			if(halt.is_bound()  &&  welt->get_spieler(1)==halt->get_besitzer()) {
+			if(halt.is_bound()  &&  welt->get_spieler(1)==halt->get_besitzer() && halt->same_group(besch)) {
 				return halt;
 			}
 		}
@@ -2768,7 +2768,10 @@ DBG_MESSAGE("wkz_station_building_aux()", "building mail office/station building
 							const planquadrat_t *pl = welt->lookup( pos-offset+koord(x,y) );
 							halthandle_t test_halt = pl->get_halt();
 							if(test_halt.is_bound()) {
-								if(!spieler_t::check_owner( new_owner, test_halt->get_besitzer())) {
+								if (! test_halt->same_group(besch) ) {
+									ok = false;
+									msg = "Incompatible station group";
+								} else if(!spieler_t::check_owner( new_owner, test_halt->get_besitzer())) {
 									// there is another player's halt
 									ok = false;
 									msg = "Das Feld gehoert\neinem anderen Spieler\n";
@@ -2803,7 +2806,9 @@ DBG_MESSAGE("wkz_station_building_aux()", "building mail office/station building
 					for(  sint16 y=-1;  y<=testsize.y;  y++  ) {
 						// left (for all tiles, even bridges)
 						const planquadrat_t *pl = welt->lookup( test_start+koord(-1,y) );
-						if(  pl  &&  pl->get_halt().is_bound()  &&  new_owner==pl->get_halt()->get_besitzer()  ) {
+						if(  pl  &&  pl->get_halt().is_bound()  &&  new_owner==pl->get_halt()->get_besitzer()
+							&& pl->get_halt()->same_group(besch)
+						  ) {
 							halt = pl->get_halt();
 							for(  uint b=0;  b<pl->get_boden_count();  b++  ) {
 								grund_t *gr = pl->get_boden_bei(b);
@@ -2817,7 +2822,9 @@ DBG_MESSAGE("wkz_station_building_aux()", "building mail office/station building
 							}
 						}
 						pl = welt->lookup( test_start+koord(testsize.x,y) );
-						if(  pl  &&  pl->get_halt().is_bound()  &&  new_owner==pl->get_halt()->get_besitzer()  ) {
+						if(  pl  &&  pl->get_halt().is_bound()  &&  new_owner==pl->get_halt()->get_besitzer()
+							&& pl->get_halt()->same_group(besch)
+						  ) {
 							halt = pl->get_halt();
 							for(  uint b=0;  b<pl->get_boden_count();  b++  ) {
 								grund_t *gr = pl->get_boden_bei(b);
@@ -2835,7 +2842,9 @@ DBG_MESSAGE("wkz_station_building_aux()", "building mail office/station building
 					for(  sint16 x=-1;  x<=testsize.x;  x++  ) {
 						// upper and lower
 						const planquadrat_t *pl = welt->lookup( test_start+koord(x,-1) );
-						if(  pl  &&  pl->get_halt().is_bound()  &&  new_owner==pl->get_halt()->get_besitzer()  ) {
+						if(  pl  &&  pl->get_halt().is_bound()  &&  new_owner==pl->get_halt()->get_besitzer()
+							&& pl->get_halt()->same_group(besch)
+						  ) {
 							halt = pl->get_halt();
 							for(  uint b=0;  b<pl->get_boden_count();  b++  ) {
 								grund_t *gr = pl->get_boden_bei(b);
@@ -2849,7 +2858,9 @@ DBG_MESSAGE("wkz_station_building_aux()", "building mail office/station building
 							}
 						}
 						pl = welt->lookup( test_start+koord(x,testsize.y) );
-						if(  pl  &&  pl->get_halt().is_bound()  &&  new_owner==pl->get_halt()->get_besitzer()  ) {
+						if(  pl  &&  pl->get_halt().is_bound()  &&  new_owner==pl->get_halt()->get_besitzer()
+							&& pl->get_halt()->same_group(besch)
+						  ) {
 							halt = pl->get_halt();
 							for(  uint b=0;  b<pl->get_boden_count();  b++  ) {
 								grund_t *gr = pl->get_boden_bei(b);
@@ -2907,7 +2918,9 @@ DBG_MESSAGE("wkz_station_building_aux()", "building mail office/station building
 			for(  sint16 y=0;  y<besch->get_h(rotation);  y++  ) {
 				const planquadrat_t *pl = welt->lookup( pos-offsets+koord(x,y) );
 				halthandle_t test_halt = pl->get_halt();
-				if( test_halt.is_bound()  &&  spieler_t::check_owner( new_owner, test_halt->get_besitzer()) ) {
+				if( test_halt.is_bound()  &&  spieler_t::check_owner( new_owner, test_halt->get_besitzer())
+					&& pl->get_halt()->same_group(besch)
+				  ) {
 					halt = test_halt;
 					break;
 				}
@@ -2933,7 +2946,9 @@ DBG_MESSAGE("wkz_station_building_aux()", "building mail office/station building
 				const planquadrat_t *pl = welt->lookup(pos+koord(x,y));
 				halthandle_t test_halt = pl->get_halt();
 				if(test_halt.is_bound()) {
-					if(!spieler_t::check_owner( new_owner, test_halt->get_besitzer())) {
+					if (!test_halt->same_group(besch) ) {
+						return "Incompatible station group";
+					} else if(!spieler_t::check_owner( new_owner, test_halt->get_besitzer())) {
 						return "Das Feld gehoert\neinem anderen Spieler\n";
 					}
 					else if(!halt.is_bound()) {
@@ -2946,7 +2961,7 @@ DBG_MESSAGE("wkz_station_building_aux()", "building mail office/station building
 			}
 		}
 		if(!halt.is_bound()) {
-			halt = suche_nahe_haltestelle(new_owner, welt, welt->lookup_kartenboden(pos)->get_pos(), besch->get_b(rotation), besch->get_h(rotation) );
+			halt = suche_nahe_haltestelle(new_owner, welt, welt->lookup_kartenboden(pos)->get_pos(), besch, besch->get_b(rotation), besch->get_h(rotation) );
 			// is there no halt to connect?
 			if(  !halt.is_bound()  ) {
 				return "Post muss neben\nHaltestelle\nliegen!\n";
@@ -3140,13 +3155,14 @@ DBG_MESSAGE("wkz_dockbau()","building dock from square (%d,%d) to (%d,%d)", pos.
 
 //DBG_MESSAGE("wkz_dockbau()","search for stop");
 	if(!halt.is_bound()) {
-		halt = suche_nahe_haltestelle(sp, welt, welt->lookup_kartenboden(pos)->get_pos() );
+		halt = suche_nahe_haltestelle(sp, welt, welt->lookup_kartenboden(pos)->get_pos(), besch );
 	}
 	bool neu = !halt.is_bound();
 
 	if(neu) 
 	{ // neues dock
 		halt = sp->halt_add(pos);
+		halt->set_compatibility_group(besch->get_compatibility_group());
 	}
 	hausbauer_t::baue(welt, halt->get_besitzer(), bau_pos, layout, besch, &halt);
 
@@ -3287,7 +3303,7 @@ DBG_MESSAGE("wkz_halt_aux()", "building %s on square %d,%d for waytype %x", besc
 		for(unsigned i=0;  i<4;  i++) {
 			// oriented buildings here - get neighbouring layouts
 			const planquadrat_t *plan = welt->lookup(pos+koord::nsow[i]);
-			if(plan  &&  plan->get_halt().is_bound()) {
+			if(plan  &&  plan->get_halt().is_bound() && plan->get_halt()->same_group(besch)) {
 				// ok, here is a halt at least
 				next_halt |= ribi_t::nsow[i];
 				gr = welt->lookup(koord3d(pos+koord::nsow[i],offset));
@@ -3357,12 +3373,15 @@ DBG_MESSAGE("wkz_halt_aux()", "building %s on square %d,%d for waytype %x", besc
 		{
 			return "Upgrade must have\na higher level";
 		}
+		if (old_besch->get_compatibility_group() != besch->get_compatibility_group() ) {
+			return "Upgrate must have same compatibility group";
+		}
 		gb->entferne( NULL );
 		delete gb;
 		halt = old_halt;
 	}
 	else {
-		halt = suche_nahe_haltestelle(sp,welt,bd->get_pos());
+		halt = suche_nahe_haltestelle(sp,welt,bd->get_pos(), besch);
 	}
 
 	// seems everything ok, lets build
@@ -3370,6 +3389,7 @@ DBG_MESSAGE("wkz_halt_aux()", "building %s on square %d,%d for waytype %x", besc
 
 	if(neu) {
 		halt = sp->halt_add(pos);
+		halt->set_compatibility_group(besch->get_compatibility_group());
 	}
 	hausbauer_t::neues_gebaeude( welt, halt->get_besitzer(), bd->get_pos(), layout, besch, &halt);
 	halt->recalc_station_type();

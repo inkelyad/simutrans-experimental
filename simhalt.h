@@ -20,6 +20,8 @@
 #include "bauer/warenbauer.h"
 
 #include "besch/ware_besch.h"
+#include "besch/haus_besch.h"
+
 
 #include "dataobj/koord.h"
 
@@ -509,6 +511,8 @@ private:
 	//			  When loading halts from save game, this is set to 0
 	unsigned long inauguration_time;
 
+	uint16 compatibility_group;
+
 public:
 
 	// Added by : Knightly
@@ -973,6 +977,11 @@ public:
 	 * @author Inkelyad
 	 */
 	int get_queue_pos(convoihandle_t cnv) const;
+
+	uint16 get_compatibility_group() const { return compatibility_group; }
+	void set_compatibility_group(uint16 cg) { compatibility_group = cg; }
+	bool same_group(const haus_besch_t *besch) { return compatibility_group == besch->get_compatibility_group(); }
+
 };
 
 ENUM_BITSET(haltestelle_t::stationtyp)

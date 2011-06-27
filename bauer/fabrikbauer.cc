@@ -441,6 +441,7 @@ fabrik_t* fabrikbauer_t::baue_fabrik(karte_t* welt, koord3d* parent, const fabri
 
 		koord k;
 		halthandle_t halt = welt->get_spieler(1)->halt_add(pos.get_2d());
+		halt->set_compatibility_group(besch->get_compatibility_group());
 		if(halt.is_bound()) {
 
 			for(k.x=pos.x; k.x<pos.x+dim.x; k.x++) {

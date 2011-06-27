@@ -244,15 +244,22 @@ obj_besch_t * building_reader_t::read_node(FILE *fp, obj_node_info_t &node)
 
 		if(experimental)
 		{
-			if(experimental_version > 1)
+			if ( experimental_version <= 2 )
 			{
-				dbg->fatal( "building_reader_t::read_node()","Incompatible pak file version for Simutrans-Ex, number %i", experimental_version );
+				if (experimental_version >= 1)
+				{
+					besch->station_capacity = decode_uint16(p);
+					besch->station_maintenance = decode_sint32(p);
+					besch->station_price = decode_sint32(p);
+				}
+				if (experimental_version >= 2)
+				{
+					besch->compatibility_group = decode_uint16(p);
+				}
 			}
 			else
 			{
-				besch->station_capacity = decode_uint16(p);
-				besch->station_maintenance = decode_sint32(p);
-				besch->station_price = decode_sint32(p);
+				dbg->fatal( "building_reader_t::read_node()","Incompatible pak file version for Simutrans-Ex, number %i", experimental_version );
 			}
 		}
 	}
@@ -403,6 +410,7 @@ obj_besch_t * building_reader_t::read_node(FILE *fp, obj_node_info_t &node)
 
 	DBG_DEBUG("building_reader_t::read_node()",
 		"version=%d"
+		" exp_version=%d"
 		" gtyp=%d"
 		" utyp=%d"
 		" level=%d"
@@ -412,12 +420,14 @@ obj_besch_t * building_reader_t::read_node(FILE *fp, obj_node_info_t &node)
 		" layouts=%d"
 		" enables=%x"
 		" flags=%d"
+		" compatibility_group=%d"
 		" chance=%d"
 		" climates=%X"
 		" anim=%d"
 		" intro=%d"
 		" retire=%d",
 		version,
+		experimental_version,
 		besch->gtyp,
 		besch->utype,
 		besch->level,
@@ -427,6 +437,7 @@ obj_besch_t * building_reader_t::read_node(FILE *fp, obj_node_info_t &node)
 		besch->layouts,
 		besch->enables,
 		besch->flags,
+		besch->compatibility_group,
 		besch->chance,
 		besch->allowed_climates,
 		besch->animation_time,

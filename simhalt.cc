@@ -3091,7 +3091,6 @@ void haltestelle_t::recalc_station_type()
 		grund_t* gr = i->grund;
 		const gebaeude_t* gb = gr->find<gebaeude_t>();
 		const haus_besch_t *besch=gb?gb->get_tile()->get_besch():NULL;
-
 		if(gr->ist_wasser()) {
 			// may happend around oil rigs and so on
 			new_station_type |= dock;
@@ -3281,6 +3280,7 @@ void haltestelle_t::rdwr(loadsave_t *file)
 			const haus_besch_t *besch=gb?gb->get_tile()->get_besch():NULL;
 			if(besch) {
 				add_grund( gr );
+				set_compatibility_group(besch->get_compatibility_group());
 			}
 			else {
 				dbg->warning("haltestelle_t::rdwr()", "will no longer add ground without building at %s!", k.get_str() );

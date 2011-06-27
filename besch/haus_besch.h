@@ -195,6 +195,7 @@ class haus_besch_t : public obj_besch_std_name_t { // Daten für ein ganzes Gebäu
 	sint32 station_maintenance;
 	sint32 scaled_station_maintenance;
 	uint16 station_capacity;
+	uint16 compatibility_group;
 
 	climate_bits allowed_climates;
 
@@ -348,6 +349,8 @@ public:
 	sint32 get_base_station_price() const { return  station_price; }
 
 	uint16 get_station_capacity() const { return station_capacity; }
+
+	uint16 get_compatibility_group() const { return compatibility_group; }
 	
 	void set_scale(uint16 scale_factor) 
 	{
